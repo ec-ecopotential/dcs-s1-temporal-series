@@ -1,0 +1,88 @@
+################################################################################################
+#                                           Chain
+################################################################################################
+[DEFAULT]
+region=toulouse
+
+[Paths]
+# Path for result tiled images
+Output : /home/fbrito/s1tiling/lixo/S1/%(region)s
+
+# Path to store the S1 images to be processed
+S1Images : /home/fbrito/s1tiling/lixo/S1/rawdata/%(region)s
+
+# Path to SRTM files
+SRTM : $path_to_srtm
+
+GeoidFile : $path_to_geoid
+
+[PEPS]
+# If True, activate the downloading from PEPS
+Download : True
+
+# The Region of Interest can be defined by
+# - Tile (or list of tiles) or
+# - Long/Lat coordinates (NW and SE points) 
+#
+# if ROI_by_tiles=ALL all the tiles to be processed (see section [Processing]) will be downloaded
+#ROI_by_tiles : 33NWB
+ROI_by_coordinates : 0.897 43.921 2.338 43.128
+
+# Command used by the processor to download the S1 images from PEPS
+# Please, set the initial and fianl date (YY-MM-DD format) in this line
+# Don't touch the other parameters
+command : ./peps/peps_download/peps_download.py -c S1 -p GRD -a ./peps/peps_download/peps.txt -d 2016-01-04 -f 2016-01-07
+
+[Processing]
+
+# Define the type of calibration: gamma or sigma
+Calibration: $calibration
+
+# Pixel Size (in meters) of the output images
+OutputSpatialResolution : $spatial_resolution
+
+# Path and filename of the tile shape definition (ESRI Shapefile)
+TilesShapefile : $tiles_shapefile
+SRTMShapefile : $srtmshapefile
+
+# Grid spacing for the interpolator in the orthorectification process
+# for more information, please consult the OTB orthorectification application
+# A nice value is 4xOutputSpatialResolution
+Orthorectification_gridspacing : $grid_spacing
+
+# Threshold on the image level to be considered as zeros
+BorderThreshold : $border_threshold
+
+# Tiles to be processed: list of tiles (comma separated)
+Tiles : $tiles
+
+# Percentage of tile area to be covered for a tile to be retained in ALL mode
+TileToProductOverlapRatio : $overlap_ratio
+
+# Running mode: 
+# Normal: print progess information on screen
+# debug: print all information/errors on screen
+# logging: print all information/errors on log files
+Mode : $log_level
+
+# Number of processes to be running in parallel
+# This number define the number of S1 images to be processed in parallel.
+# Must be <= to the number of core on the machine
+NbParallelProcesses : $processes
+
+# RAM Allower per process in MB
+RAMPerProcess : $ram_process
+
+[Filtering]
+# If True, the multiImage filtering is activated after the tiling process
+Filtering_activated : $filtering
+
+# If True, the outcore of the multiImage filter is reset before filtering. It means that the outcore is recomputed from scratch with the new images only.
+# If False, the outcore is updated with the new images. Then, the outcore integrates previous images and new images.
+Reset_outcore : True
+
+# Set the window radius for the spatial filtering 
+# Take care that it is a radius, i.e. radius=1 means the filter does an 3x3 pixels averaging.
+Window_radius : $window_radius
+
+

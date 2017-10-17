@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<application xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" id="application">
+  <jobTemplates>
+    <jobTemplate id="otb">
+      <streamingExecutable>/application/otb/run</streamingExecutable>
+      <defaultParameters>
+        <parameter id="calibration" title="Calibration" abstract="Calibration: Gamma or Sigma" maxOccurs="1" scope="runtime" type="LiteralData">
+          <options>
+           <option>gamma</option>
+           <option>sigma</option>
+           <default>gamma</default>
+          </options>
+        </parameter>
+     </defaultParameters>
+     <defaultJobconf>
+        <property id="mapred.task.timeout">9900000000000</property>
+      </defaultJobconf>
+    </jobTemplate>
+  </jobTemplates>
+  <workflow id="dcs-s1-temporal-series" title="Sentinel-1 temporal series" abstract="Sentinel-1 temporal series">
+    <workflowVersion>1.0</workflowVersion>
+    <node id="otb">
+      <job id="otb"/>
+      <sources>
+        <source id="series" refid="string:list" scope="runtime" title="Catalogue URL" abstract="Catalogue URL" maxOccurs="1">https://catalog.terradue.com/sentinel2/description</source>
+      </sources>
+    </node>
+  </workflow>
+</application>
