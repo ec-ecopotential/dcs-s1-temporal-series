@@ -1,16 +1,28 @@
 <?xml version="1.0" encoding="us-ascii"?>
 <application xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" id="application">
   <jobTemplates>
-    <jobTemplate id="otb">
+    <jobTemplate id="s1tiling">
       <streamingExecutable>/application/otb/run</streamingExecutable>
       <defaultParameters>
-        <parameter id="calibration" title="Calibration" abstract="Calibration: Gamma or Sigma" maxOccurs="1" scope="runtime" type="LiteralData">
+        <parameter id="calibration" title="Calibration" abstract="Define the type of calibration: gamma or sigma" maxOccurs="1" scope="runtime" type="LiteralData">
           <options>
            <option>gamma</option>
            <option>sigma</option>
            <default>gamma</default>
           </options>
+           </parameter>
+          <parameter id="spatial_resolution" title="Spatial resolution" abstract="Pixel Size (in meters) of the output images" maxOccurs="1" scope="runtime" type="LiteralData">10</parameter>
+          <parameter id="grid_spacing" title="Orthorectification grid spacing" abstract="Grid spacing for the interpolator in the orthorectification process" maxOccurs="1" scope="runtime" type="LiteralData">40</parameter>
+          <parameter id="border_threshold" title="Border threshold" abstract="Threshold on the image level to be considered as zeros" maxOccurs="1" scope="runtime" type="LiteralData">1e-3</parameter>
+          <parameter id="overlap_ratio" title="Tile to product overlap ratio" abstract="Percentage of tile area to be covered for a tile to be retained" maxOccurs="1" scope="runtime" type="LiteralData">0.5</parameter>
+          <parameter id="filtering" title="Filtering" abstract="If True, the multiImage filtering is activated after the tiling process" maxOccurs="1" scope="runtime" type="LiteralData">
+        <options>
+           <option>True</option>
+           <option>False</option>
+           <default>True</default>
+          </options>
         </parameter>
+        <parameter id="window_radius" title="Window radius" abstract="Set the window radius for the spatial filtering" maxOccurs="1" scope="runtime" type="LiteralData">1</parameter>
      </defaultParameters>
      <defaultJobconf>
         <property id="mapred.task.timeout">9900000000000</property>
