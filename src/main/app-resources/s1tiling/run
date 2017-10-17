@@ -17,35 +17,36 @@ src = Template( filein.read() )
 
 path_to_srtm = '/pippo/lixo/SRTM'
 path_to_geoid = ''
-calibration = ''
-spatial_resolution = ''
+calibration = ciop.getparam('calibration')
+spatial_resolution = ciop.getparam('spatial_resolution')
 tiles_shapefile = ''
 srtmshapefile = ''
-grid_spacing = ''
-border_threshold = ''
-tiles = ''
-overlap_ratio = ''
+grid_spacing = ciop.getparam('grid_spacing')
+border_threshold = ciop.getparam('border_threshold')
+tiles = 
+overlap_ratio = ciop.getparam('border_threshold')
 log_level = ''
 processes = ''
 ram_process = ''
-filtering = ''
-window_radius = ''
+filtering = ciop.getparam('filtering')
+window_radius = ciop.getparam('window_radius')
 
-d = { 'path_to_srtm':path_to_srtm,
-      'path_to_geoid':path_to_geoid,
-      'calibration': calibration,
-      'spatial_resolution':spatial_resolution,
-      'tiles_shapefile': tiles_shapefile,
-      'srtmshapefile': srtmshapefile,
-      'grid_spacing': grid_spacing,
-      'border_threshold': border_threshold,
-      'tiles': tiles,
-      'overlap_ratio': overlap_ratio,
-      'log_level': log_level,
-      'processes': processes,
-      'ram_process': ram_process,
-      'filtering': filtering,
-      'window_radius': window_radius }
+
+d = { 'path_to_srtm' : path_to_srtm,
+      'path_to_geoid' : path_to_geoid,
+      'calibration' : calibration,
+      'spatial_resolution' : spatial_resolution,
+      'tiles_shapefile' : tiles_shapefile,
+      'srtmshapefile' : srtmshapefile,
+      'grid_spacing' : grid_spacing,
+      'border_threshold' : border_threshold,
+      'tiles' : tiles,
+      'overlap_ratio' : overlap_ratio,
+      'log_level' : log_level,
+      'processes' : processes,
+      'ram_process' : ram_process,
+      'filtering' : filtering,
+      'window_radius' : window_radius }
 
 result = src.substitute(d)
 
