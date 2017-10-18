@@ -2,14 +2,14 @@
 #                                           Chain
 ################################################################################################
 [DEFAULT]
-region=toulouse
+region=$region 
 
 [Paths]
 # Path for result tiled images
-Output : /home/fbrito/s1tiling/lixo/S1/%(region)s
+Output : $output
 
 # Path to store the S1 images to be processed
-S1Images : /home/fbrito/s1tiling/lixo/S1/rawdata/%(region)s
+S1Images : $s1_images
 
 # Path to SRTM files
 SRTM : $path_to_srtm
@@ -18,7 +18,7 @@ GeoidFile : $path_to_geoid
 
 [PEPS]
 # If True, activate the downloading from PEPS
-Download : True
+Download : False
 
 # The Region of Interest can be defined by
 # - Tile (or list of tiles) or
@@ -26,7 +26,7 @@ Download : True
 #
 # if ROI_by_tiles=ALL all the tiles to be processed (see section [Processing]) will be downloaded
 #ROI_by_tiles : 33NWB
-ROI_by_coordinates : 0.897 43.921 2.338 43.128
+#ROI_by_coordinates : 0.897 43.921 2.338 43.128
 
 # Command used by the processor to download the S1 images from PEPS
 # Please, set the initial and fianl date (YY-MM-DD format) in this line

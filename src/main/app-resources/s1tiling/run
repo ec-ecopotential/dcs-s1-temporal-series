@@ -10,6 +10,9 @@ import fnmatch
 import glob 
 import numpy as np
 from string import Template
+import csv
+import zipfile
+
 
 sys.path.append('/opt/anaconda/bin/')
 import cioppy
@@ -20,7 +23,7 @@ sys.path.append('/opt/OTB/lib/libfftw3.so.3')
 os.environ['OTB_APPLICATION_PATH'] = '/opt/OTB/lib/otb/applications'
 os.environ['LD_LIBRARY_PATH'] = '/opt/OTB/lib'
 os.environ['ITK_AUTOLOAD_PATH'] = '/opt/OTB/lib/otb/applications'
-import otbApplication
+#import otbApplication
 
 # define the exit codes
 SUCCESS = 0
@@ -54,6 +57,7 @@ def main():
   #read it
   src = Template(filein.read() )
 
+  s1_images = os.path.join(ciop.tmp_dir, 'S1')
   path_to_srtm = os.path.join(ciop.tmp_dir, 'SRTM')
   path_to_geoid = os.path.join(ciop.application_dir, 's1tiling', 'etc', 'egm96.grd')
   calibration = ciop.getparam('calibration')
@@ -69,32 +73,72 @@ def main():
   ram_process = '4096'
   filtering = ciop.getparam('filtering')
   window_radius = ciop.getparam('window_radius')
-  region = ciop.getparam('pa')
- 
-  d = { 'path_to_srtm' : path_to_srtm,
-      'path_to_geoid' : path_to_geoid,
-      'calibration' : calibration,
-      'spatial_resolution' : spatial_resolution,
-      'tiles_shapefile' : tiles_shapefile,
-      'srtmshapefile' : srtm_shapefile,
-      'grid_spacing' : grid_spacing,
-      'border_threshold' : border_threshold,
-      'tiles' : tiles,
-      'overlap_ratio' : overlap_ratio,
-      'log_level' : log_level,
-      'processes' : processes,
-      'ram_process' : ram_process,
-      'filtering' : filtering,
-      'window_radius' : window_radius }
+  pa = ciop.getparam('pa')
+  path_results = os.path.join(ciop.tmp_dir, 'results')
+  
+  d = { 'region' : pa,
+        's1_images' : s1_images,
+        'path_to_srtm' : path_to_srtm,
+        'path_to_geoid' : path_to_geoid,
+        'calibration' : calibration,
+        'spatial_resolution' : spatial_resolution,
+        'tiles_shapefile' : tiles_shapefile,
+        'srtmshapefile' : srtm_shapefile,
+        'grid_spacing' : grid_spacing,
+        'border_threshold' : border_threshold,
+        'tiles' : tiles,
+        'overlap_ratio' : overlap_ratio,
+        'log_level' : log_level,
+        'processes' : processes,
+        'ram_process' : ram_process,
+        'filtering' : filtering,
+        'window_radius' : window_radius,
+        'output' : path_results }
 
   result = src.substitute(d)
+ 
+  processor_config = os.path.join(ciop.tmp_dir, 'S1Processor.cfg') 
 
-  text_file = open("Output.txt", "w")
+  text_file = open(processor_config, 'w')
   text_file.write(result)
   text_file.close()
 
+  pa_config = os.path.join(ciop.application_dir, 's1tiling', 'etc', 'pa.bbox')
+
+  csv_file = csv.reader(open(pa_config, "rb"), delimiter=",")
+
+  for row in csv_file:
+    if pa == row[1]:
+      pa_info= row
+
+  ciop.log('INFO', 'Protected area: ' + pa_info[1])
+ 
+  pa_bbox = '%s,%s,%s,%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5])
+ 
+  ciop.log('INFO', 'Protected area bbox: ' + pa_bbox)
+
+  # get the SRTM tiles
+  params =  { 'bbox=' : pa_bbox }  
+ 
+  search = ciop.search(end_point = 'https://catalog.terradue.com/srtm/search?do=terradue&bbox=' + pa_bbox, params = params, output_fields='enclosure,identifier', model='GeoTime') 
+  assert(search), sys.exit(ERR_RESOLUTION)  
+ 
+  for srtm in search:
+    ciop.log('INFO', 'Retrieve %s from %s' % (srtm['identifier'], srtm['enclosure']))
+    retrieved = ciop.copy(srtm['enclosure'], ciop.tmp_dir)
+    assert(retrieved), sys.exit(ERR_STAGEIN)
+    
+    zip_ref = zipfile.ZipFile(os.path.join(ciop.tmp_dir, srtm['identifier']), 'r')
+    zip_ref.extractall(path_to_srtm)
+    zip_ref.close()  
+     
+    #shutil.move(os.path.join(ciop.tmp_dir, search[0]['identifier'], search[0]['identifier'][:-8] + '.hgt'),
+    #            os.path.join(path_to_srtm, search[0]['identifier'][:-8] + '.hgt'))    
+ 
+  # loop input Sentinel-1 products
   for inputfile in sys.stdin:
-    # report activity in log
+    
+    # stage-in the Sentinel-1 file
     ciop.log('INFO', 'The input file is: ' + inputfile)
 
     search = ciop.search(end_point = inputfile, params = [], output_fields='enclosure,identifier', model='GeoTime')
@@ -104,15 +148,17 @@ def main():
     retrieved = ciop.copy(search[0]['enclosure'], ciop.tmp_dir)
     assert(retrieved), sys.exit(ERR_STAGEIN)
 
-    
+    shutil.move(os.path.join(ciop.tmp_dir, search[0]['identifier'], search[0]['identifier'] + '.SAFE'),
+                os.path.join(s1_images, search[0]['identifier'] + '.SAFE'))
+ 
 
   # publish
-  ciop.log('INFO', 'Publishing ' + s1_result_prd ) 
-  ciop.publish(s1_result_prd, metalink=True)      
+  #ciop.log('INFO', 'Publishing ' + s1_result_prd ) 
+  #ciop.publish(s1_result_prd, metalink=True)      
    
   # clean-up
-  os.remove(s1_result_prd)
-  shutil.rmtree(os.path.join(ciop.tmp_dir, str(search[0]['identifier'])))
+  #os.remove(s1_result_prd)
+  #shutil.rmtree(os.path.join(ciop.tmp_dir, str(search[0]['identifier'])))
    
 try:
   main()
