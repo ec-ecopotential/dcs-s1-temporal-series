@@ -25,6 +25,10 @@ os.environ['LD_LIBRARY_PATH'] = '/opt/OTB/lib'
 os.environ['ITK_AUTOLOAD_PATH'] = '/opt/OTB/lib/otb/applications'
 #import otbApplication
 
+# add cesbio S1processor files
+sys.path.append(os.path.join(os.environ['_CIOP_APPLICATION_PATH'], 's1tiling', 'lib'))
+
+
 # define the exit codes
 SUCCESS = 0
 ERR_RESOLUTION = 10
@@ -59,11 +63,11 @@ def main():
 
   s1_images = os.path.join(ciop.tmp_dir, 'S1')
   path_to_srtm = os.path.join(ciop.tmp_dir, 'SRTM')
-  path_to_geoid = os.path.join(ciop.application_dir, 's1tiling', 'etc', 'egm96.grd')
+  path_to_geoid = os.path.join(ciop.application_dir, 's1tiling', 'lib', 'Geoid', 'egm96.grd')
   calibration = ciop.getparam('calibration')
   spatial_resolution = ciop.getparam('spatial_resolution')
-  tiles_shapefile = os.path.join(ciop.application_dir, 's1tiling', 'etc', 'Features.shp')
-  srtm_shapefile = os.path.join(ciop.application_dir, 's1tiling', 'etc', 'srtm.shp')
+  tiles_shapefile = os.path.join(ciop.application_dir, 's1tiling', 'lib', 'shapefile', 'Features.shp')
+  srtm_shapefile = os.path.join(ciop.application_dir, 's1tiling', 'lib', 'shapefile', 'srtm.shp')
   grid_spacing = ciop.getparam('grid_spacing')
   border_threshold = ciop.getparam('border_threshold')
   tiles = ciop.getparam('tiles')
@@ -113,14 +117,15 @@ def main():
 
   ciop.log('INFO', 'Protected area: ' + pa_info[1])
  
-  pa_bbox = '%s,%s,%s,%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5])
- 
+  #pa_bbox = '%s%2C%s%2C%s%2C%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5])
+  pa_bbox = str(float(pa_info[2]) - 4.0) + '%2C' + str(float(pa_info[3]) - 4.0) + '%2C' + str(float(pa_info[4]) + 4.0) + '%2C' + str(float(pa_info[5]) + 4.0) 
+
   ciop.log('INFO', 'Protected area bbox: ' + pa_bbox)
 
   # get the SRTM tiles
   params =  { 'bbox=' : pa_bbox }  
  
-  search = ciop.search(end_point = 'https://catalog.terradue.com/srtm/search?do=terradue&bbox=' + pa_bbox, params = params, output_fields='enclosure,identifier', model='GeoTime') 
+  search = ciop.search(end_point = 'https://catalog.terradue.com/srtm/search?do=terradu&erel=contains&bbox=' + pa_bbox, params = params, output_fields='enclosure,identifier', model='GeoTime') 
   assert(search), sys.exit(ERR_RESOLUTION)  
  
   for srtm in search:
@@ -150,7 +155,13 @@ def main():
 
     shutil.move(os.path.join(ciop.tmp_dir, search[0]['identifier'], search[0]['identifier'] + '.SAFE'),
                 os.path.join(s1_images, search[0]['identifier'] + '.SAFE'))
- 
+  
+  try:
+    s1processor_exec = os.path.join(os.environ['_CIOP_APPLICATION_PATH'], 's1tiling', 'lib', 'S1Processor.py')
+    sys.argv = [s1processor_exec, processor_config]
+    execfile(s1processor_exec)
+  except:
+    raise
 
   # publish
   #ciop.log('INFO', 'Publishing ' + s1_result_prd ) 
