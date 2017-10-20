@@ -6,7 +6,7 @@ beautifulsoup4=4.6.0=py27_0
 cffi=1.10.0=py27_0
 chardet=3.0.4=py27_0
 cioppy=0.2.3=py27heb14f35_0
-conda=4.3.29=py27h13e2077_0
+conda=4.3.30=py27h6ae6dc7_0
 conda-build=3.0.19=py27h652c75d_0
 conda-env=2.6.0=h36134e3_1
 conda-verify=2.0.0=py27_0
@@ -67,6 +67,7 @@ ruamel_yaml=0.11.14=py27_0
 setuptools=23.0.0=py27_0
 six=1.10.0=py27_0
 sqlite=3.20.1=h6d8b0f3_1
+subprocess32=3.2.7=py27h373dbce_0
 tk=8.5.19=2
 wheel=0.29.0=py27_0
 yaml=0.1.6=0

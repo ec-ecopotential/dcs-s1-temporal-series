@@ -12,21 +12,23 @@ import numpy as np
 from string import Template
 import csv
 import zipfile
+import select
+import subprocess 
 
 
 sys.path.append('/opt/anaconda/bin/')
 import cioppy
 ciop = cioppy.Cioppy()
 
-sys.path.append('/opt/OTB/lib/python')
-sys.path.append('/opt/OTB/lib/libfftw3.so.3')
-os.environ['OTB_APPLICATION_PATH'] = '/opt/OTB/lib/otb/applications'
-os.environ['LD_LIBRARY_PATH'] = '/opt/OTB/lib'
-os.environ['ITK_AUTOLOAD_PATH'] = '/opt/OTB/lib/otb/applications'
+#sys.path.append('/opt/OTB/lib/python')
+#sys.path.append('/opt/OTB/lib/libfftw3.so.3')
+#os.environ['OTB_APPLICATION_PATH'] = '/opt/OTB/lib/otb/applications'
+#os.environ['LD_LIBRARY_PATH'] = '/opt/OTB/lib'
+#os.environ['ITK_AUTOLOAD_PATH'] = '/opt/OTB/lib/otb/applications'
 #import otbApplication
-
+#os.environ["PATH"] += '/opt/OTB/bin'
 # add cesbio S1processor files
-sys.path.append(os.path.join(os.environ['_CIOP_APPLICATION_PATH'], 's1tiling', 'lib'))
+#sys.path.append(os.path.join(ciop.application_dir, 's1tiling', 'lib'))
 
 
 # define the exit codes
@@ -55,10 +57,20 @@ def clean_exit(exit_code):
 
 def main():
 
+  # store stdin in array
+  s1_products = []
+  for input in sys.stdin:
+    s1_products.append(input)
+ 
+  # if nothing to process
+  if len(s1_products) == 0:
+    ciop.log('INFO', 'No inputs to process')
+    sys.exit(0)
+
   os.chdir(ciop.tmp_dir)
   
+  # prepare the processor configuration 
   filein = open(os.path.join(ciop.application_dir, 's1tiling', 'etc', 'S1Processor.template'))
-  #read it
   src = Template(filein.read() )
 
   s1_images = os.path.join(ciop.tmp_dir, 'S1')
@@ -107,6 +119,10 @@ def main():
   text_file.write(result)
   text_file.close()
 
+  # publish the processor configuration
+  ciop.publish(processor_config, metalink=True)
+
+  # get PA information
   pa_config = os.path.join(ciop.application_dir, 's1tiling', 'etc', 'pa.bbox')
 
   csv_file = csv.reader(open(pa_config, "rb"), delimiter=",")
@@ -115,19 +131,29 @@ def main():
     if pa == row[1]:
       pa_info= row
 
-  ciop.log('INFO', 'Protected area: ' + pa_info[1])
+  ciop.log('INFO', 'Protected area: %s (%s)' % (pa_info[1], pa_info[0]))
  
   #pa_bbox = '%s%2C%s%2C%s%2C%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5])
-  pa_bbox = str(float(pa_info[2]) - 4.0) + '%2C' + str(float(pa_info[3]) - 4.0) + '%2C' + str(float(pa_info[4]) + 4.0) + '%2C' + str(float(pa_info[5]) + 4.0) 
+  extend = 0.0 
+  pa_bbox = str(float(pa_info[2]) - extend) + '%2C' + str(float(pa_info[3]) - extend) + '%2C' + str(float(pa_info[4]) + extend) + '%2C' + str(float(pa_info[5]) + extend) 
 
-  ciop.log('INFO', 'Protected area bbox: ' + pa_bbox)
+  ciop.log('INFO', 'Protected area bbox: %s,%s,%s,%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5]))
 
   # get the SRTM tiles
-  params =  { 'bbox=' : pa_bbox }  
+  params =  { 'bbox' : '%s,%s,%s,%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5]),
+              'do' : 'terradue' } 
  
-  search = ciop.search(end_point = 'https://catalog.terradue.com/srtm/search?do=terradu&erel=contains&bbox=' + pa_bbox, params = params, output_fields='enclosure,identifier', model='GeoTime') 
+  # TODO check ciop.search params (not working)
+  #search = ciop.search(end_point = 'https://catalog.terradue.com/srtm/search?do=terradue&bbox=' + pa_bbox, params = params, output_fields='enclosure,identifier', model='GeoTime') 
+  search = ciop.search(end_point = 'https://catalog.terradue.com/srtm/search', params = params, output_fields='enclosure,identifier', model='GeoTime')
   assert(search), sys.exit(ERR_RESOLUTION)  
- 
+
+  # work around: additional tiles not returned by the catalogue and needed to process the data
+  search.append({'identifier': 'N36W008.SRTMGL1', 'enclosure': 'https://store.terradue.com/download/srtm/files/v1/N36W008.SRTMGL1' })
+  search.append({'identifier': 'N37W008.SRTMGL1', 'enclosure': 'https://store.terradue.com/download/srtm/files/v1/N37W008.SRTMGL1' }) 
+
+  # retrieve the SRTM tiles
+  ciop.log('INFO', 'Retrieve SRTM tiles')
   for srtm in search:
     ciop.log('INFO', 'Retrieve %s from %s' % (srtm['identifier'], srtm['enclosure']))
     retrieved = ciop.copy(srtm['enclosure'], ciop.tmp_dir)
@@ -137,14 +163,11 @@ def main():
     zip_ref.extractall(path_to_srtm)
     zip_ref.close()  
      
-    #shutil.move(os.path.join(ciop.tmp_dir, search[0]['identifier'], search[0]['identifier'][:-8] + '.hgt'),
-    #            os.path.join(path_to_srtm, search[0]['identifier'][:-8] + '.hgt'))    
- 
   # loop input Sentinel-1 products
-  for inputfile in sys.stdin:
+  for inputfile in s1_products:
     
     # stage-in the Sentinel-1 file
-    ciop.log('INFO', 'The input file is: ' + inputfile)
+    ciop.log('INFO', 'The input Sentinel-1 product reference is: ' + inputfile)
 
     search = ciop.search(end_point = inputfile, params = [], output_fields='enclosure,identifier', model='GeoTime')
     assert(search), sys.exit(ERR_RESOLUTION)
@@ -156,20 +179,32 @@ def main():
     shutil.move(os.path.join(ciop.tmp_dir, search[0]['identifier'], search[0]['identifier'] + '.SAFE'),
                 os.path.join(s1_images, search[0]['identifier'] + '.SAFE'))
   
-  try:
-    s1processor_exec = os.path.join(os.environ['_CIOP_APPLICATION_PATH'], 's1tiling', 'lib', 'S1Processor.py')
-    sys.argv = [s1processor_exec, processor_config]
-    execfile(s1processor_exec)
-  except:
-    raise
+    shutil.rmtree(retrieved)
+ 
+    try:
+      ciop.log("INFO", "Launch S1Processor")
+#      s1processor_exec = os.path.join(os.environ['_CIOP_APPLICATION_PATH'], 's1tiling', 'lib', 'S1Processor.py')
+#      sys.argv = [s1processor_exec, processor_config]
+#      execfile(s1processor_exec)
+      log_processor = os.path.join(path_results, search[0]['identifier'][:-4] + 'log')
+  
+      cmd = [ os.path.join(ciop.application_dir, 's1tiling', 'libexec', 'run_s1processor'), processor_config, log_processor]
+      p = subprocess.Popen(cmd,
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+      
+      res, err = p.communicate()
+      if p.returncode:
+            raise Exception('subprocess returned: ' + str(p.returncode) + '\n' + err )
 
-  # publish
-  #ciop.log('INFO', 'Publishing ' + s1_result_prd ) 
-  #ciop.publish(s1_result_prd, metalink=True)      
+      ciop.log("INFO", "Done...")
+    except:
+      raise
    
-  # clean-up
-  #os.remove(s1_result_prd)
-  #shutil.rmtree(os.path.join(ciop.tmp_dir, str(search[0]['identifier'])))
+    shutil.rmtree(os.path.join(s1_images, search[0]['identifier'] + '.SAFE'))
+  
+  # publish
+  ciop.log('INFO', 'Publishing') 
+  ciop.publish(path_results, metalink=True)      
    
 try:
   main()
