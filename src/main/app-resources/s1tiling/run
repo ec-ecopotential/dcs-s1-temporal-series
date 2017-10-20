@@ -133,24 +133,18 @@ def main():
 
   ciop.log('INFO', 'Protected area: %s (%s)' % (pa_info[1], pa_info[0]))
  
-  #pa_bbox = '%s%2C%s%2C%s%2C%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5])
-  extend = 0.0 
-  pa_bbox = str(float(pa_info[2]) - extend) + '%2C' + str(float(pa_info[3]) - extend) + '%2C' + str(float(pa_info[4]) + extend) + '%2C' + str(float(pa_info[5]) + extend) 
+  extend = 1.0 
+  pa_bbox = str(float(pa_info[2]) - extend) + ',' + str(float(pa_info[3]) - extend) + ',' + str(float(pa_info[4]) + extend) + ',' + str(float(pa_info[5]) + extend) 
 
   ciop.log('INFO', 'Protected area bbox: %s,%s,%s,%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5]))
 
   # get the SRTM tiles
-  params =  { 'bbox' : '%s,%s,%s,%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5]),
-              'do' : 'terradue' } 
+  params =  { 'bbox' : pa_bbox,
+              'count' : '100',  
+              'do' : 'terradue' }
  
-  # TODO check ciop.search params (not working)
-  #search = ciop.search(end_point = 'https://catalog.terradue.com/srtm/search?do=terradue&bbox=' + pa_bbox, params = params, output_fields='enclosure,identifier', model='GeoTime') 
   search = ciop.search(end_point = 'https://catalog.terradue.com/srtm/search', params = params, output_fields='enclosure,identifier', model='GeoTime')
   assert(search), sys.exit(ERR_RESOLUTION)  
-
-  # work around: additional tiles not returned by the catalogue and needed to process the data
-  search.append({'identifier': 'N36W008.SRTMGL1', 'enclosure': 'https://store.terradue.com/download/srtm/files/v1/N36W008.SRTMGL1' })
-  search.append({'identifier': 'N37W008.SRTMGL1', 'enclosure': 'https://store.terradue.com/download/srtm/files/v1/N37W008.SRTMGL1' }) 
 
   # retrieve the SRTM tiles
   ciop.log('INFO', 'Retrieve SRTM tiles')
