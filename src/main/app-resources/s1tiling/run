@@ -176,10 +176,8 @@ def main():
     shutil.rmtree(retrieved)
  
     try:
-      ciop.log("INFO", "Launch S1Processor")
-#      s1processor_exec = os.path.join(os.environ['_CIOP_APPLICATION_PATH'], 's1tiling', 'lib', 'S1Processor.py')
-#      sys.argv = [s1processor_exec, processor_config]
-#      execfile(s1processor_exec)
+      ciop.log('INFO', 'Launch S1Processor')
+
       log_processor = os.path.join(path_results, search[0]['identifier'][:-4] + 'log')
   
       cmd = [ os.path.join(ciop.application_dir, 's1tiling', 'libexec', 'run_s1processor'), processor_config, log_processor]
@@ -190,7 +188,9 @@ def main():
       if p.returncode:
             raise Exception('subprocess returned: ' + str(p.returncode) + '\n' + err )
 
-      ciop.log("INFO", "Done...")
+      ciop.publish(log_processor, base_path = path_results, metalink = True)
+
+      ciop.log('INFO', 'Done for ' + search[0]['identifier'])
     except:
       raise
    
@@ -198,7 +198,10 @@ def main():
   
   # publish
   ciop.log('INFO', 'Publishing') 
-  ciop.publish(path_results, metalink=True)      
+  for root, dirs, files in os.walk(path_results):
+    for file in files:
+      if file.endswith('.tif'):
+        ciop.publish(os.path.join(root, file), base_path = path_results, metalink = True)  
    
 try:
   main()
