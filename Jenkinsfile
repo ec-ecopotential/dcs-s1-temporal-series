@@ -2,7 +2,8 @@ node('ci-community') {
   
   stage 'Checkout'
   checkout scm
-  
+  sh 'git submodule update --init'
+
   stage 'Setup environment'
   env.PATH = "${tool 'apache-maven-3.0.5'}/bin:${env.PATH}"
   
