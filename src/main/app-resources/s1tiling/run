@@ -1,0 +1,215 @@
+#!/opt/anaconda/bin/python
+
+import sys
+import os
+import lxml.etree as et
+import shutil
+import tarfile
+import atexit
+import fnmatch
+import glob 
+import numpy as np
+from string import Template
+import csv
+import zipfile
+import select
+import subprocess 
+
+
+sys.path.append('/opt/anaconda/bin/')
+import cioppy
+ciop = cioppy.Cioppy()
+
+#sys.path.append('/opt/OTB/lib/python')
+#sys.path.append('/opt/OTB/lib/libfftw3.so.3')
+#os.environ['OTB_APPLICATION_PATH'] = '/opt/OTB/lib/otb/applications'
+#os.environ['LD_LIBRARY_PATH'] = '/opt/OTB/lib'
+#os.environ['ITK_AUTOLOAD_PATH'] = '/opt/OTB/lib/otb/applications'
+#import otbApplication
+#os.environ["PATH"] += '/opt/OTB/bin'
+# add cesbio S1processor files
+#sys.path.append(os.path.join(ciop.application_dir, 's1tiling', 'lib'))
+
+
+# define the exit codes
+SUCCESS = 0
+ERR_RESOLUTION = 10
+ERR_STAGEIN = 20
+ERR_EXTRACT = 30
+ERR_NO_OUTPUT = 40 
+ERR_NO_S1 = 50
+
+# add a trap to exit gracefully
+def clean_exit(exit_code):
+    log_level = 'INFO'
+    if exit_code != SUCCESS:
+        log_level = 'ERROR'  
+   
+    msg = {SUCCESS: 'Processing successfully concluded',
+           ERR_RESOLUTION: 'Could not resolve Landsat-8 product enclosure',
+           ERR_STAGEIN: 'Could not stage-in Landsat-8 product',
+           ERR_EXTRACT: 'Failed to extract Landsat-8 product',
+           ERR_NO_OUTPUT: "OTB failed to produce output",
+           ERR_NO_S1: "Could not find Sentinel-1 data with swath and polarisation provided"    
+    }
+ 
+    ciop.log(log_level, msg[exit_code])  
+
+def main():
+
+  # store stdin in array
+  s1_products = []
+  for input in sys.stdin:
+    s1_products.append(input)
+ 
+  # if nothing to process
+  if len(s1_products) == 0:
+    ciop.log('INFO', 'No inputs to process')
+    sys.exit(0)
+
+  os.chdir(ciop.tmp_dir)
+  
+  # prepare the processor configuration 
+  filein = open(os.path.join(ciop.application_dir, 's1tiling', 'etc', 'S1Processor.template'))
+  src = Template(filein.read() )
+
+  s1_images = os.path.join(ciop.tmp_dir, 'S1')
+  path_to_srtm = os.path.join(ciop.tmp_dir, 'SRTM')
+  path_to_geoid = os.path.join(ciop.application_dir, 's1tiling', 'lib', 'Geoid', 'egm96.grd')
+  calibration = ciop.getparam('calibration')
+  spatial_resolution = ciop.getparam('spatial_resolution')
+  tiles_shapefile = os.path.join(ciop.application_dir, 's1tiling', 'lib', 'shapefile', 'Features.shp')
+  srtm_shapefile = os.path.join(ciop.application_dir, 's1tiling', 'lib', 'shapefile', 'srtm.shp')
+  grid_spacing = ciop.getparam('grid_spacing')
+  border_threshold = ciop.getparam('border_threshold')
+  tiles = ciop.getparam('tiles')
+  overlap_ratio = ciop.getparam('border_threshold')
+  log_level = 'debug'
+  processes = '1'
+  ram_process = '4096'
+  filtering = ciop.getparam('filtering')
+  window_radius = ciop.getparam('window_radius')
+  pa = ciop.getparam('pa')
+  path_results = os.path.join(ciop.tmp_dir, 'results')
+  
+  d = { 'region' : pa,
+        's1_images' : s1_images,
+        'path_to_srtm' : path_to_srtm,
+        'path_to_geoid' : path_to_geoid,
+        'calibration' : calibration,
+        'spatial_resolution' : spatial_resolution,
+        'tiles_shapefile' : tiles_shapefile,
+        'srtmshapefile' : srtm_shapefile,
+        'grid_spacing' : grid_spacing,
+        'border_threshold' : border_threshold,
+        'tiles' : tiles,
+        'overlap_ratio' : overlap_ratio,
+        'log_level' : log_level,
+        'processes' : processes,
+        'ram_process' : ram_process,
+        'filtering' : filtering,
+        'window_radius' : window_radius,
+        'output' : path_results }
+
+  result = src.substitute(d)
+ 
+  processor_config = os.path.join(ciop.tmp_dir, 'S1Processor.cfg') 
+
+  text_file = open(processor_config, 'w')
+  text_file.write(result)
+  text_file.close()
+
+  # publish the processor configuration
+  ciop.publish(processor_config, metalink=True)
+
+  # get PA information
+  pa_config = os.path.join(ciop.application_dir, 's1tiling', 'etc', 'pa.bbox')
+
+  csv_file = csv.reader(open(pa_config, "rb"), delimiter=",")
+
+  for row in csv_file:
+    if pa == row[1]:
+      pa_info= row
+
+  ciop.log('INFO', 'Protected area: %s (%s)' % (pa_info[1], pa_info[0]))
+ 
+  extend = 1.0 
+  pa_bbox = str(float(pa_info[2]) - extend) + ',' + str(float(pa_info[3]) - extend) + ',' + str(float(pa_info[4]) + extend) + ',' + str(float(pa_info[5]) + extend) 
+
+  ciop.log('INFO', 'Protected area bbox: %s,%s,%s,%s' % (pa_info[2], pa_info[3], pa_info[4], pa_info[5]))
+
+  # get the SRTM tiles
+  params =  { 'bbox' : pa_bbox,
+              'count' : '100',  
+              'do' : 'terradue' }
+ 
+  search = ciop.search(end_point = 'https://catalog.terradue.com/srtm/search', params = params, output_fields='enclosure,identifier', model='GeoTime')
+  assert(search), sys.exit(ERR_RESOLUTION)  
+
+  # retrieve the SRTM tiles
+  ciop.log('INFO', 'Retrieve SRTM tiles')
+  for srtm in search:
+    ciop.log('INFO', 'Retrieve %s from %s' % (srtm['identifier'], srtm['enclosure']))
+    retrieved = ciop.copy(srtm['enclosure'], ciop.tmp_dir)
+    assert(retrieved), sys.exit(ERR_STAGEIN)
+    
+    zip_ref = zipfile.ZipFile(os.path.join(ciop.tmp_dir, srtm['identifier']), 'r')
+    zip_ref.extractall(path_to_srtm)
+    zip_ref.close()  
+     
+  # loop input Sentinel-1 products
+  for inputfile in s1_products:
+    
+    # stage-in the Sentinel-1 file
+    ciop.log('INFO', 'The input Sentinel-1 product reference is: ' + inputfile)
+
+    search = ciop.search(end_point = inputfile, params = [], output_fields='enclosure,identifier', model='GeoTime')
+    assert(search), sys.exit(ERR_RESOLUTION)
+
+    ciop.log('INFO', 'Retrieve %s from %s' % (search[0]['identifier'], search[0]['enclosure']))
+    retrieved = ciop.copy(search[0]['enclosure'], ciop.tmp_dir)
+    assert(retrieved), sys.exit(ERR_STAGEIN)
+
+    shutil.move(os.path.join(ciop.tmp_dir, search[0]['identifier'], search[0]['identifier'] + '.SAFE'),
+                os.path.join(s1_images, search[0]['identifier'] + '.SAFE'))
+  
+    shutil.rmtree(retrieved)
+ 
+    try:
+      ciop.log('INFO', 'Launch S1Processor')
+
+      log_processor = os.path.join(path_results, search[0]['identifier'][:-4] + 'log')
+  
+      cmd = [ os.path.join(ciop.application_dir, 's1tiling', 'libexec', 'run_s1processor'), processor_config, log_processor]
+      p = subprocess.Popen(cmd,
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+      
+      res, err = p.communicate()
+      if p.returncode:
+            raise Exception('subprocess returned: ' + str(p.returncode) + '\n' + err )
+
+      ciop.publish(log_processor, base_path = path_results, metalink = True)
+
+      ciop.log('INFO', 'Done for ' + search[0]['identifier'])
+    except:
+      raise
+   
+    shutil.rmtree(os.path.join(s1_images, search[0]['identifier'] + '.SAFE'))
+  
+  # publish
+  ciop.log('INFO', 'Publishing') 
+  for root, dirs, files in os.walk(path_results):
+    for file in files:
+      if file.endswith('.tif'):
+        ciop.publish(os.path.join(root, file), base_path = path_results, metalink = True)  
+   
+try:
+  main()
+except SystemExit as e:
+  if e.args[0]:
+    clean_exit(e.args[0])
+  raise
+else:
+  atexit.register(clean_exit, 0)
+    
+  

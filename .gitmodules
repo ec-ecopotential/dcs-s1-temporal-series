@@ -1,0 +1,3 @@
+[submodule "src/main/app-resources/s1tiling/lib"]
+	path = src/main/app-resources/s1tiling/lib
+	url = http://tully.ups-tlse.fr/michelj/s1tiling.git
