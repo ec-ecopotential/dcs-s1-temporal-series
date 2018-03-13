@@ -61,7 +61,7 @@
     <node id="s1tiling">
       <job id="s1tiling"/>
       <sources>
-        <source id="source" refid="string:list" scope="runtime" title="S1 catalogue references" abstract="S1 catalogue references" maxOccurs="1">https://catalog.terradue.com//sentinel1/search?uid=S1B_IW_GRDH_1SDV_20171006T062610_20171006T062635_007705_00D9BA_5B0C,https://catalog.terradue.com//sentinel1/search?uid=S1A_IW_GRDH_1SDV_20170918T062705_20170918T062730_018426_01F060_2976,https://catalog.terradue.com//sentinel1/search?uid=S1A_IW_GRDH_1SDV_20170917T182623_20170917T182648_018419_01F031_C36D</source>
+        <source id="source" refid="string:list" scope="runtime" title="S1 catalogue references" abstract="S1 catalogue references" minOccurs="1">https://catalog.terradue.com//sentinel1/search?uid=S1B_IW_GRDH_1SDV_20171006T062610_20171006T062635_007705_00D9BA_5B0C,https://catalog.terradue.com//sentinel1/search?uid=S1A_IW_GRDH_1SDV_20170918T062705_20170918T062730_018426_01F060_2976,https://catalog.terradue.com//sentinel1/search?uid=S1A_IW_GRDH_1SDV_20170917T182623_20170917T182648_018419_01F031_C36D</source>
       </sources>
     </node>
   </workflow>
