@@ -11,7 +11,7 @@
     <version>2.0.0</version>
   </parent>
   <description>This is the abstract</description>
-  <version>0.1</version>
+  <version>0.2</version>
   <properties>
     <summary>summary</summary>
     <description>Sentinel-1 temporal series filtering</description>
@@ -47,9 +47,11 @@
                 <configuration>
                   <!-- Set here the dependencies installed with 'sudo yum install'-->
                   <requires>
-                    <require>fftw</require>
                     <require>miniconda</require>
                     <require>OTB</require>
+                    <postinstallScriptlet combine.self="override">
+                      <script>conda update conda -y &amp;&amp; conda install -y --file /application/dependencies/python/packages.list</script>
+                    </postinstallScriptlet>
                   </requires>
                 </configuration>
               </execution>
