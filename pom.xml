@@ -47,10 +47,12 @@
                 <configuration>
                   <!-- Set here the dependencies installed with 'sudo yum install'-->
                   <requires>
-                    <require>fftw</require>
                     <require>miniconda</require>
                     <require>OTB</require>
-                  </requires>
+                                                       <postinstallScriptlet combine.self="override">
+                    <script>conda update conda -y &amp;&amp; conda install -y --file /application/dependencies/python/packages.list</script>
+                  </postinstallScriptlet>  
+                </requires>
                 </configuration>
               </execution>
             </executions>
