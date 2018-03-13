@@ -11,7 +11,7 @@
     <version>3.0.0-docker</version>
   </parent>
   <description>This is the abstract</description>
-  <version>0.2</version>
+  <version>0.3</version>
   <properties>
     <summary>summary</summary>
     <description>Sentinel-1 temporal series filtering</description>
@@ -49,10 +49,10 @@
                   <requires>
                     <require>miniconda</require>
                     <require>OTB</require>
-                    <postinstallScriptlet combine.self="override">
-                      <script>conda update conda -y &amp;&amp; conda install -y --file /application/dependencies/python/packages.list</script>
-                    </postinstallScriptlet>
                   </requires>
+                  <postinstallScriptlet combine.self="override">
+                    <script>conda update conda -y &amp;&amp; conda install -y --file /application/dependencies/python/packages.list</script>
+                  </postinstallScriptlet>
                 </configuration>
               </execution>
             </executions>
