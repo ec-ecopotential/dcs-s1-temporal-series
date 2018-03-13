@@ -49,11 +49,11 @@
                   <requires>
                     <require>miniconda</require>
                     <require>OTB</require>
-                    <postinstallScriptlet combine.self="override">
-                      <script>conda update conda -y &amp;&amp; conda install -y --file /application/dependencies/python/packages.list</script>
-                    </postinstallScriptlet>
                   </requires>
-                </configuration>
+  <postinstallScriptlet combine.self="override">
+                      <script>conda update conda -y &amp;&amp; conda install -y --file /application/dependencies/python/packages.list</script>
+                    </postinstallScriptlet>                
+</configuration>
               </execution>
             </executions>
           </plugin>
