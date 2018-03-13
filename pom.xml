@@ -11,7 +11,7 @@
     <version>2.0.0</version>
   </parent>
   <description>This is the abstract</description>
-  <version>0.3</version>
+  <version>0.4-SNAPSHOT</version>
   <properties>
     <summary>summary</summary>
     <description>Sentinel-1 temporal series filtering</description>
