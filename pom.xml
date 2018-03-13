@@ -11,7 +11,7 @@
     <version>2.0.0</version>
   </parent>
   <description>This is the abstract</description>
-  <version>0.3-SNAPSHOT</version>
+  <version>0.3</version>
   <properties>
     <summary>summary</summary>
     <description>Sentinel-1 temporal series filtering</description>
@@ -50,10 +50,10 @@
                     <require>miniconda</require>
                     <require>OTB</require>
                   </requires>
-  <postinstallScriptlet combine.self="override">
-                      <script>conda update conda -y &amp;&amp; conda install -y --file /application/dependencies/python/packages.list</script>
-                    </postinstallScriptlet>                
-</configuration>
+                  <postinstallScriptlet combine.self="override">
+                    <script>conda update conda -y &amp;&amp; conda install -y --file /application/dependencies/python/packages.list</script>
+                  </postinstallScriptlet>
+                </configuration>
               </execution>
             </executions>
           </plugin>
